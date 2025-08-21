@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sender — Tap to Share (Consented)</title>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; font-family: system-ui, Arial, sans-serif; background:#0f172a; color:#e5e7eb; display:grid; place-items:center; min-height:100vh; }
+  .card { background:#111827; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:20px; width:min(560px,90vw); text-align:center; }
+  h1 { margin:0 0 6px; font-size:1.25rem; }
+  p { margin:6px 0; }
+  .tapanywhere { margin-top:14px; padding:16px; border-radius:12px; background:rgba(34,211,238,.12); border:1px solid rgba(34,211,238,.35); }
+  .status { margin-top:12px; font-size:.95rem; opacity:.9; }
+  .hint { margin-top:10px; font-size:.9rem; opacity:.75; }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <h1>📡 Tap Anywhere to Start Sharing</h1>
+    <p>This demo requires a single user gesture for camera permission. Nothing is stored.</p>
+    <div class="tapanywhere">Tap anywhere on this page to grant camera access and start streaming to <b>viewer.html</b>.</div>
+    <div class="status" id="status">Waiting for tap…</div>
+    <div class="hint">Open <b>viewer.html</b> on Phone B to watch.</div>
+  </div>
+
+<script>
+  const statusEl = document.getElementById('status');
+  const peer = new Peer('sender-fixed-id'); // fixed ID so viewer can auto-connect
+  let started = false;
+  let localStream = null;
+
+  async function startSharing() {
+    if (started) return;
+    started = true;
+    try {
+      statusEl.textContent = 'Requesting camera permission…';
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      statusEl.textContent = '✅ Sharing active. Viewer can connect now.';
+
+      // Answer any incoming viewer call with our camera stream
+      peer.on('call', call => {
+        call.answer(localStream);
+      });
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = '❌ Camera access denied or unavailable.';
+      started = false;
+    }
+  }
+
+  // Use the FIRST user gesture anywhere to start (tap/click/keydown)
+  const onceOpts = { once: true, passive: true };
+  window.addEventListener('pointerdown', startSharing, onceOpts);
+  window.addEventListener('keydown', startSharing, onceOpts);
+  window.addEventListener('touchstart', startSharing, onceOpts);
+
+  // If permission was previously granted and the browser allows, try auto-start on load too
+  window.addEventListener('load', () => {
+    // Some browsers may still require a gesture; this just attempts a start.
+    startSharing();
+  });
+</script>
+</body>
+</html>

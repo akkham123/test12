@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viewer — Auto Connect</title>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; font-family: system-ui, Arial, sans-serif; background:#0f172a; color:#e5e7eb; display:grid; place-items:center; min-height:100vh; }
+  .card { background:#111827; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:20px; width:min(560px,92vw); text-align:center; }
+  h1 { margin:0 0 6px; font-size:1.25rem; }
+  video { width:100%; max-width:520px; border-radius:12px; border:2px solid rgba(255,255,255,.15); margin-top:12px; }
+  .status { margin-top:10px; font-size:.95rem; opacity:.9; }
+  button { margin-top:12px; padding:10px 16px; border-radius:10px; border:0; background:linear-gradient(135deg,#22d3ee,#0ea5e9); color:#04151f; cursor:pointer; font-weight:600; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>👀 Viewer</h1>
+    <p>If the sender has started sharing, you should see video below. If not, ask them to open <b>sender.html</b> and tap anywhere.</p>
+    <button id="retryBtn">Retry connect</button>
+    <div class="status" id="status">Connecting…</div>
+    <video id="remoteVideo" autoplay playsinline></video>
+  </div>
+
+<script>
+  const statusEl = document.getElementById('status');
+  const remoteVideo = document.getElementById('remoteVideo');
+  const retryBtn = document.getElementById('retryBtn');
+
+  function connectOnce() {
+    statusEl.textContent = 'Connecting…';
+    const viewerPeer = new Peer(); // random ID for viewer
+    viewerPeer.on('open', () => {
+      try {
+        const call = viewerPeer.call('sender-fixed-id', null);
+        call.on('stream', stream => {
+          remoteVideo.srcObject = stream;
+          statusEl.textContent = '✅ Connected';
+        });
+        call.on('close', () => { statusEl.textContent = '🔌 Disconnected'; });
+        call.on('error', err => { statusEl.textContent = '❌ Error: ' + err; });
+      } catch (e) {
+        statusEl.textContent = '❌ Failed to connect.';
+        console.error(e);
+      }
+    });
+    viewerPeer.on('error', err => {
+      statusEl.textContent = '❌ Peer error: ' + err;
+    });
+  }
+
+  // Try immediately and allow manual retry
+  connectOnce();
+  retryBtn.addEventListener('click', connectOnce);
+</script>
+</body>
+</html>
